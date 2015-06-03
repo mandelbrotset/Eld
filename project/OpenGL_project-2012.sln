@@ -1,0 +1,42 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2012
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "OpenGL_project-2012", "OpenGL_project-2012.vcxproj", "{EBFBA1D8-100B-40CA-9FA5-BB20DFE3FB86}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "glutil-2012", "..\glutil\glutil-2012.vcxproj", "{C990FBAA-1445-4283-A649-DF1F4B551E86}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "linmath-2012", "..\linmath\linmath-2012.vcxproj", "{2E851FC1-D820-45A8-B3C5-19450DF20767}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Debug|x64 = Debug|x64
+		Release|Win32 = Release|Win32
+		Release|x64 = Release|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{EBFBA1D8-100B-40CA-9FA5-BB20DFE3FB86}.Debug|Win32.ActiveCfg = Debug|Win32
+		{EBFBA1D8-100B-40CA-9FA5-BB20DFE3FB86}.Debug|Win32.Build.0 = Debug|Win32
+		{EBFBA1D8-100B-40CA-9FA5-BB20DFE3FB86}.Debug|x64.ActiveCfg = Debug|Win32
+		{EBFBA1D8-100B-40CA-9FA5-BB20DFE3FB86}.Release|Win32.ActiveCfg = Release|Win32
+		{EBFBA1D8-100B-40CA-9FA5-BB20DFE3FB86}.Release|Win32.Build.0 = Release|Win32
+		{EBFBA1D8-100B-40CA-9FA5-BB20DFE3FB86}.Release|x64.ActiveCfg = Release|Win32
+		{C990FBAA-1445-4283-A649-DF1F4B551E86}.Debug|Win32.ActiveCfg = Debug|Win32
+		{C990FBAA-1445-4283-A649-DF1F4B551E86}.Debug|Win32.Build.0 = Debug|Win32
+		{C990FBAA-1445-4283-A649-DF1F4B551E86}.Debug|x64.ActiveCfg = Debug|Win32
+		{C990FBAA-1445-4283-A649-DF1F4B551E86}.Release|Win32.ActiveCfg = Release|Win32
+		{C990FBAA-1445-4283-A649-DF1F4B551E86}.Release|Win32.Build.0 = Release|Win32
+		{C990FBAA-1445-4283-A649-DF1F4B551E86}.Release|x64.ActiveCfg = Release|Win32
+		{2E851FC1-D820-45A8-B3C5-19450DF20767}.Debug|Win32.ActiveCfg = Debug|Win32
+		{2E851FC1-D820-45A8-B3C5-19450DF20767}.Debug|Win32.Build.0 = Debug|Win32
+		{2E851FC1-D820-45A8-B3C5-19450DF20767}.Debug|x64.ActiveCfg = Debug|x64
+		{2E851FC1-D820-45A8-B3C5-19450DF20767}.Debug|x64.Build.0 = Debug|x64
+		{2E851FC1-D820-45A8-B3C5-19450DF20767}.Release|Win32.ActiveCfg = Release|Win32
+		{2E851FC1-D820-45A8-B3C5-19450DF20767}.Release|Win32.Build.0 = Release|Win32
+		{2E851FC1-D820-45A8-B3C5-19450DF20767}.Release|x64.ActiveCfg = Release|x64
+		{2E851FC1-D820-45A8-B3C5-19450DF20767}.Release|x64.Build.0 = Release|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

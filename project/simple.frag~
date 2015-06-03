@@ -1,0 +1,160 @@
+#version 130
+// required by GLSL spec Sect 4.5.3 (though nvidia does not, amd does)
+precision highp float;
+
+// inputs from vertex shader.
+in vec4 color;
+in vec2 texCoord;
+in vec3 viewSpacePosition; 
+in vec3 viewSpaceNormal; 
+in vec3 viewSpaceLightPosition; 
+in vec4 shadowMapCoord;
+
+uniform sampler2D shadowMapTex;
+
+// output to frame buffer.
+out vec4 fragmentColor;
+
+// global uniforms, that are the same for the whole scene
+uniform sampler2DShadow shadowMap;
+
+uniform vec3 scene_ambient_light = vec3(0.01, 0.01, 0.01);
+uniform vec3 scene_light = vec3(0.6, 0.6, 0.6);
+
+// object specific uniforms, change once per object but are the same for all materials in object.
+uniform float object_alpha; 
+uniform float object_reflectiveness = 0.0;
+
+// matrial properties, changed when material changes.
+uniform float material_shininess;
+uniform vec3 material_diffuse_color; 
+uniform vec3 material_specular_color; 
+//uniform vec3 material_ambient_color;
+uniform vec3 material_emissive_color; 
+uniform int has_diffuse_texture; 
+uniform sampler2D diffuse_texture;
+uniform samplerCube environmentMap;
+uniform mat4 inverseViewNormalMatrix;
+uniform int nightVisionMode;
+
+vec3 calculateAmbient(vec3 ambientLight, vec3 materialAmbient)
+{
+	//return vec3(0.0);
+	return ambientLight * materialAmbient;
+}
+
+vec3 calculateDiffuse(vec3 diffuseLight, vec3 materialDiffuse, vec3 normal, vec3 directionToLight)
+{
+	return diffuseLight * materialDiffuse * max(0, dot(normal, directionToLight));
+}
+
+vec3 calculateSpecular(vec3 specularLight, vec3 materialSpecular, float materialShininess, vec3 normal, vec3 directionToLight, vec3 directionFromEye)
+{
+	vec3 h = normalize(directionToLight - directionFromEye);
+	float normalizationFactor = ((materialShininess + 2.0) / 8.0);
+	vec3 specularColor = specularLight * materialSpecular * pow(max(0, dot(h, normal)), materialShininess) * normalizationFactor;
+	return specularColor;
+}
+
+vec3 calculateFresnel(vec3 materialSpecular, vec3 normal, vec3 directionFromEye)
+{
+	return materialSpecular + (vec3(1.0) - materialSpecular) * pow(clamp(1.0 + dot(directionFromEye, normal), 0.0, 1.0), 5.0);
+}
+
+
+/*vec3 calculateAttenuation(vec4 shadowTexCoord, sampler2DShadow shadowMap) {
+	vec3 diffuseColor = (has_diffuse_texture == 1) ? texture(diffuse_texture, texCoord.xy).xyz : material_diffuse_color; 
+	
+	vec3 posToLight = normalize(viewSpaceLightPosition - viewSpacePosition);
+	float diffuseReflectance = max(0.0, dot(posToLight, normalize(viewSpaceNormal)));
+
+	//float depth = texture(shadowMapTex, shadowTexCoord.xy / shadowTexCoord.w).x;
+	//float visibility = (depth >= (shadowTexCoord.z / shadowTexCoord.w)) ? 1.0 : 0.0;
+	
+	float visibility = textureProj(shadowMap, shadowTexCoord);
+	
+	float angle = dot(posToLight, -viewSpaceLightDir);
+	float spotAttenuation = smoothstep(spotOuterAngle, spotInnerAngle, angle);
+	float attenuation = diffuseReflectance * visibility; //* spotAttenuation;
+	float attenuation = visibility * spotAttenuation;
+	//return attenuation;
+	//return visibility;
+	//return diffuseColor * diffuseReflectance * visibility;
+}*/
+
+float getNightVisionColor() {
+	if (nightVisionMode == 1) {
+		if (viewSpaceLightPosition.y > 0) {
+			return 100.0f;
+		}
+		return 20.5f;
+	} else {
+		return 1.0f;
+	}
+}
+
+void main() 
+{
+
+	
+	vec3 diffuse = material_diffuse_color;
+	vec3 specular = material_specular_color;
+	// The emissive term allows objects to glow irrespective of illumination, this is just added
+	// to the shading, most materials have an emissive color of 0, in the scene the sky uses an emissive of 1
+	// which allows it a constant and uniform look.
+	vec3 emissive = material_emissive_color;
+	// Note: we do not use the per-material ambient. This is because it is more
+	// practical to control on a scene basis, and is usually the same as diffuse.
+	// Feel free to enable it, but then it must be correctly set for _all_ materials (in the .mtl files)!
+	vec3 ambient = material_diffuse_color;//material_ambient_color;
+	
+	// if we have a texture we modulate all of the color properties
+	if (has_diffuse_texture == 1)
+	{
+		diffuse *= texture(diffuse_texture, texCoord.xy).xyz; 
+		ambient *= texture(diffuse_texture, texCoord.xy).xyz; 
+		emissive *= texture(diffuse_texture, texCoord.xy).xyz; 
+	}
+
+//	fragmentColor = vec4(diffuse + emissive, object_alpha);
+	vec3 normal = normalize(viewSpaceNormal);
+	vec3 directionToLight = normalize(viewSpaceLightPosition - viewSpacePosition);
+	vec3 directionFromEye = normalize(viewSpacePosition);
+	vec3 fresnelSpecular = calculateFresnel(specular, normal, directionFromEye);
+
+
+	vec3 reflectionVector = (inverseViewNormalMatrix * vec4(reflect(directionFromEye, normal), 0.0)).xyz;
+	vec3 envMapSample = texture(environmentMap, reflectionVector).rgb;
+
+	vec3 diffuseColor = (has_diffuse_texture == 1) ? 
+	texture(diffuse_texture, texCoord.xy).xyz : material_diffuse_color; 
+
+	vec3 posToLight = normalize(viewSpaceLightPosition - viewSpacePosition);
+	float diffuseReflectance = max(0.0, dot(posToLight, normalize(viewSpaceNormal)));
+
+	//float depth = texture(shadowMapTex, shadowMapCoord.xy / shadowMapCoord.w).x;
+	//float visibility = (depth >= (shadowMapCoord.z / shadowMapCoord.w)) ? 1.0 : 0.0;
+	float visibility = textureProj(shadowMap, shadowMapCoord);
+	vec2 coord = shadowMapCoord.xy / shadowMapCoord.w;
+	//if (coord.x >= 1 || coord.x <= 0) {
+
+	//vec3 diffuseColor = (has_diffuse_texture == 1) ? texture(diffuse_texture, texCoord.xy).xyz : material_diffuse_color;
+//	vec3 attenuation = calculateAttenuation(shadowMapCoord, shadowMap);
+	
+	
+	vec3 shading = calculateAmbient(scene_ambient_light, ambient)+ calculateSpecular(scene_light, fresnelSpecular, material_shininess, normal, directionToLight, directionFromEye) + emissive + envMapSample * fresnelSpecular * object_reflectiveness;
+	
+	//fragmentColor = vec4(shading * attenuation, object_alpha);
+	shading = vec3(shading.x, shading.y * getNightVisionColor(), shading.z);
+
+	//fragmentColor = vec4(calculateAmbient(scene_ambient_light, ambient), 1.0);
+	//fragmentColor = vec4(diffuseColor * diffuseReflectance * visibility, 1.0);
+	fragmentColor = vec4(calculateDiffuse(scene_light, diffuse, normal, directionToLight) * visibility + shading, object_alpha);
+	//fragmentColor = vec4(diffuseColor * diffuseReflectance, 1.0);
+	//fragmentColor = vec4(visibility,0.0,0.0, 1.0);
+//	fragmentColor = vec4(envMapSample, 1.0);
+}
+
+
+
+
