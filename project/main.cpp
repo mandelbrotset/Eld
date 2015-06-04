@@ -24,6 +24,7 @@
 #define _USE_MATH_DEFINES
 #include <math.h>
 #include "Cloud.h"
+#include "SilkFire.h"
 
 using namespace std;
 using namespace chag;
@@ -68,30 +69,19 @@ float4x4 lightProjectionMatrix;
 float4x4 lightViewMatrix;
 
 bool nightVisionMode = false;
-const int nrOfSilken = 10;
 
 GLuint positionBuffer, colorBuffer, indexBuffer, vertexArrayObject, textureBuffer, texture;
 
-/******************************* THE SILK **************************************/
-Silk* silken[nrOfSilken];
-int* indices;
-float* texcoords;
-float* positions[nrOfSilken];
-GLuint		ppositionBuffer[nrOfSilken], pcolorBuffer, pindexBuffer, pvertexArrayObject[nrOfSilken];
-GLuint		ptextureBuffer;
-GLuint		ptexture;
-GLuint		eldTextures[18];
-GLuint		silkShaderProgram;
-int silkwidth = 5;
-int silkheight = 5;
+/*******************************  SILKE    **************************************/
+SilkFire* silkFire;
+/********************************************************************************/
 
 /******************************* THE CLOUD **************************************/
-
 float cradius = 150.0f;
 Cloud* cloud;
+/********************************************************************************/
 
-/**WATER**/
-
+/********************************* WATER ****************************************/
 GLuint wpositionBuffer, wcolorBuffer, windexBuffer, wtextureBuffer, wtexture, wvertexArrayObject, waterShader;
 const float waterPositions[] = {
 	-cradius, 0.0f, -cradius,
@@ -111,9 +101,11 @@ const float waterTexCoords[] = {
 	0, 100.0f,
 	100.0f, 100.0f
 };
+/********************************************************************************/
 
-
+/********************************* SMOKE ****************************************/
 SmokeEmitter *smokeEmitter;
+/********************************************************************************/
 
 //clear color:
 float r = 0.1f;
@@ -125,14 +117,14 @@ void drawWater() {
 	int h = glutGet((GLenum)GLUT_WINDOW_HEIGHT);
 	glViewport(0, 0, w, h);
 	glDisable(GL_CULL_FACE);
-	glUseProgram( silkShaderProgram );	
+	glUseProgram(silkFire->getShaderProgram());	
 	float4x4 projectionMatrix = perspectiveMatrix(45.0f, float(w)/float(h), 0.01f, 300.0f); 
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	setUniformSlow(silkShaderProgram, "viewMatrix", cameraViewMatrix);
-	setUniformSlow(silkShaderProgram, "projectionMatrix", cameraProjectionMatrix);
-	setUniformSlow(silkShaderProgram, "modelMatrix", make_identity<float4x4>());
-	setUniformSlow(silkShaderProgram, "alphaFactor", 1.0f);
+	setUniformSlow(silkFire->getShaderProgram(), "viewMatrix", cameraViewMatrix);
+	setUniformSlow(silkFire->getShaderProgram(), "projectionMatrix", cameraProjectionMatrix);
+	setUniformSlow(silkFire->getShaderProgram(), "modelMatrix", make_identity<float4x4>());
+	setUniformSlow(silkFire->getShaderProgram(), "alphaFactor", 1.0f);
 	glEnable(GL_NORMALIZE);
 	glBindBuffer(GL_ARRAY_BUFFER, wpositionBuffer);
 	glBindVertexArray(wvertexArrayObject);
@@ -142,13 +134,6 @@ void drawWater() {
 	glBindTexture(GL_TEXTURE_2D, wtexture);
 	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 	glUseProgram( 0 );
-}
-
-void updateTexture(Silk* silke) {
-	int index = silke->getFlameIndex();
-	silke->updateFlame(currentTime);
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, eldTextures[index]);
 }
 
 void initWater() {
@@ -177,86 +162,8 @@ void initWater() {
 	
 	wtexture = ilutGLLoadImage("../scenes/water.png");
 
-	glUseProgram(silkShaderProgram);
-	int texLoc = glGetUniformLocation(silkShaderProgram, "colorTexture");
-	glUniform1i(texLoc, 0);
-}
-
-void initSilk() {
-	float size;
-	float min = 0.4f;
-	float max = 0.8f;
-	for (int s = 0; s < nrOfSilken; s++) {
-		size = min + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(max-min)));
-		silken[s] = new Silk(silkwidth, silkheight, size, size, s);
-		positions[s] = silken[s]->getPositions();
-	}
-
-	indices = silken[0]->getIndices();
-	texcoords = silken[0]->getTexCoords();
-
-	for (int s = 0; s < nrOfSilken; s++) {
-		glGenBuffers(1, &ppositionBuffer[s]);
-		glBindBuffer( GL_ARRAY_BUFFER, ppositionBuffer[s]);
-		glBufferData( GL_ARRAY_BUFFER, sizeof(positions[s]) * silkwidth * silkheight * 3, positions[s], GL_STATIC_DRAW );
-	}
-
-	glGenBuffers( 1, &pindexBuffer );
-	glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, pindexBuffer );										
-	glBufferData( GL_ELEMENT_ARRAY_BUFFER, sizeof(indices) * (silkwidth-1)*(silkheight-1)*2*3, indices, GL_STATIC_DRAW );			
-
-	glGenBuffers(1, &ptextureBuffer);
-	glBindBuffer(GL_ARRAY_BUFFER, ptextureBuffer);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(texcoords) * silkwidth * silkheight * 2, texcoords, GL_STATIC_DRAW);
-	
-	for (int s = 0; s < nrOfSilken; s++) {
-		glGenVertexArrays(1, &pvertexArrayObject[s]);
-		glBindVertexArray(pvertexArrayObject[s]);
-		glBindBuffer( GL_ARRAY_BUFFER, ppositionBuffer[s]);
-		glVertexAttribPointer(0, 3, GL_FLOAT, false/*normalized*/, 0/*stride*/, 0/*offset*/ );	
-		
-		glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, pindexBuffer );
-		glBindBuffer(GL_ARRAY_BUFFER, ptextureBuffer);
-		glVertexAttribPointer(1, 2, GL_FLOAT, false, 0, 0);
-		glEnableVertexAttribArray(0);
-		glEnableVertexAttribArray(1);
-	}
-
-	silkShaderProgram = loadShaderProgram("silk.vert", "silk.frag"); 
-	glBindAttribLocation(silkShaderProgram, 0, "position"); 	
-	glBindAttribLocation(silkShaderProgram, 1, "texCoordIn");
-	glBindFragDataLocation(silkShaderProgram, 0, "fragmentColor");
-	linkShaderProgram(silkShaderProgram); 
-	
-	eldTextures[0] = ilutGLLoadImage("../scenes/fire/fire2/fire1.png");
-	eldTextures[1] = ilutGLLoadImage("../scenes/fire/fire2/fire2.png");
-	eldTextures[2] = ilutGLLoadImage("../scenes/fire/fire2/fire3.png");
-	eldTextures[3] = ilutGLLoadImage("../scenes/fire/fire2/fire4.png");
-	eldTextures[4] = ilutGLLoadImage("../scenes/fire/fire2/fire5.png");
-	eldTextures[5] = ilutGLLoadImage("../scenes/fire/fire2/fire6.png");
-	eldTextures[6] = ilutGLLoadImage("../scenes/fire/fire2/fire7.png");
-	eldTextures[7] = ilutGLLoadImage("../scenes/fire/fire2/fire8.png");
-	eldTextures[8] = ilutGLLoadImage("../scenes/fire/fire2/fire9.png");
-	eldTextures[9] = ilutGLLoadImage("../scenes/fire/fire2/fire10.png");
-	eldTextures[10] = ilutGLLoadImage("../scenes/fire/fire2/fire11.png");
-	eldTextures[11] = ilutGLLoadImage("../scenes/fire/fire2/fire12.png");
-	eldTextures[12] = ilutGLLoadImage("../scenes/fire/fire2/fire13.png");
-	eldTextures[13] = ilutGLLoadImage("../scenes/fire/fire2/fire14.png");
-	eldTextures[14] = ilutGLLoadImage("../scenes/fire/fire2/fire15.png");
-	eldTextures[15] = ilutGLLoadImage("../scenes/fire/fire2/fire16.png");
-	
-	for (int s = 0; s < nrOfSilken; s++) {
-		updateTexture(silken[s]);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-		glGenerateMipmap(GL_TEXTURE_2D);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, 16.0F);
-	}
-	
-	glUseProgram(silkShaderProgram);
-	int texLoc = glGetUniformLocation(silkShaderProgram, "colorTexture");
+	glUseProgram(silkFire->getShaderProgram());
+	int texLoc = glGetUniformLocation(silkFire->getShaderProgram(), "colorTexture");
 	glUniform1i(texLoc, 0);
 }
 
@@ -266,28 +173,7 @@ float3 sphericalTotreeStamtesian(float theta, float phi, float r) {
 						r * cosf(theta)*sinf(phi) );
 }
 
-void initGL()
-{
-	glewInit();  
-
-	startupGLDiagnostics();
-	setupGLDebugMessages();
-
-	ilInit();
-	ilutRenderer(ILUT_OPENGL);
-
-	if( !glBindFragDataLocation )
-	{
-		glBindFragDataLocation = glBindFragDataLocationEXT;
-	}
-	
-	cloud = new Cloud(cradius);
-	cloud->initCloud();
-	initSilk();
-	initWater();
-	float3 smokePosition = {0.9f, 0.3f, -2.51f};
-	smokeEmitter = new SmokeEmitter(100000, 0.001f, 2.0f, smokePosition);
-
+void initScene() {
 	shaderProgram = loadShaderProgram("simple.vert", "simple.frag");
 	glBindAttribLocation(shaderProgram, 0, "position"); 	
 	glBindAttribLocation(shaderProgram, 2, "texCoordIn");
@@ -330,6 +216,36 @@ void initGL()
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, shadowMapTexture, 0);
 	glDrawBuffer(GL_NONE);
 	glReadBuffer(GL_NONE);
+}
+
+void initGL()
+{
+	glewInit();  
+
+	startupGLDiagnostics();
+	setupGLDebugMessages();
+
+	ilInit();
+	ilutRenderer(ILUT_OPENGL);
+
+	if( !glBindFragDataLocation )
+	{
+		glBindFragDataLocation = glBindFragDataLocationEXT;
+	}
+	
+	cloud = new Cloud(cradius);
+	cloud->initCloud();
+
+	silkFire = new SilkFire();
+	silkFire->initSilk();
+
+	initWater();
+
+	float3 smokePosition = {0.9f, 0.3f, -2.51f};
+	smokeEmitter = new SmokeEmitter(100000, 0.001f, 2.0f, smokePosition);
+
+	initScene();
+	
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
@@ -406,12 +322,7 @@ void drawScene(void)
 	glBindTexture(GL_TEXTURE_2D, shadowMapTexture);
 	
 	setUniformSlow(shaderProgram, "nightVisionMode", (nightVisionMode) ? 1 : 0);
-	float alphaSum = 0.0f;
-	for (int s = 0; s < nrOfSilken / 3; s++) {
-		alphaSum += silken[s]->getAlphaFactor();
-	}
-
-	setUniformSlow(shaderProgram, "lightDim", silken[0]->getAlphaFactor());
+	setUniformSlow(shaderProgram, "lightDim", silkFire->getAlpha());
 	setUniformSlow(shaderProgram, "lightpos", lightPosition); 
 
 	drawShadowCasters();
@@ -460,71 +371,12 @@ void updateCamera() {
 	cameraViewMatrix = lookAt(c_position, c_target, up);
 }
 
-void drawSilk() {
-	int w = glutGet((GLenum)GLUT_WINDOW_WIDTH);
-	int h = glutGet((GLenum)GLUT_WINDOW_HEIGHT);
-	glViewport(0, 0, w, h);
-	glDisable(GL_CULL_FACE);
-	glDepthMask(GL_FALSE);
-	glUseProgram( silkShaderProgram );
-
-	float4x4 projectionMatrix = perspectiveMatrix(45.0f, float(w)/float(h), 0.01f, 300.0f); 
-
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	setUniformSlow(silkShaderProgram, "viewMatrix", cameraViewMatrix);
-	setUniformSlow(silkShaderProgram, "projectionMatrix", cameraProjectionMatrix);
-	setUniformSlow(silkShaderProgram, "modelMatrix", make_identity<float4x4>());
-
-	for (int s = 0; s < nrOfSilken; s++) {
-		positions[s] = silken[s]->getPositions();
-		glBindBuffer( GL_ARRAY_BUFFER, ppositionBuffer[s]);
-		glBufferData( GL_ARRAY_BUFFER, sizeof(positions[s]) * silkwidth * silkheight * 3, positions[s], GL_STATIC_DRAW );
-		glBindVertexArray(pvertexArrayObject[s]);
-		
-		glVertexAttribPointer(0, 3, GL_FLOAT, false/*normalized*/, 0/*stride*/, 0/*offset*/ );
-		glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, pindexBuffer );
-		glEnable(GL_BLEND);
-		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-		updateTexture(silken[s]);
-		setUniformSlow(silkShaderProgram, "alphaFactor", silken[s]->getAlphaFactor());
-		
-		glAlphaFunc(GL_GREATER, 0.0);
-		glEnable(GL_ALPHA_TEST);
-		glDrawElements(GL_TRIANGLES, (silkwidth-1)*(silkheight-1)*2*3, GL_UNSIGNED_INT, 0);
-	}
-	glDepthMask(GL_TRUE);
-	glUseProgram( 0 );
-}
-
-int i;
-float3 forceField = make_vector(0.0f, 0.03f, 0.0f);
-void makeRandomForce(float magnitude) {
-	for (int s = 0; s < nrOfSilken; s++) {
-		forceField[0] = float(rand() % 200 - 100) * 0.1f;
-		forceField[1] = float(rand() % 4 - 2) * 0.01f;
-		forceField[2] = float(rand() % 200 - 100) * 0.2f;
-		silken[s]->applyForceField(forceField);
-	}
-}
-
-void updateSilke() {
-	float t = currentTime - lastTime;
-	//printf("FPS: %f\n", 1.0f / t);
-	for (int s = 0; s < nrOfSilken; s++) {
-		silken[s]->applyForceField(make_vector(0.0f, 0.01f + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(1.5f-0.01f))), 0.0f));
-		silken[s]->updateInternalForces();
-		silken[s]->updatePhysics(0.01667);
-	}
-	lastTime = currentTime;
-}
-
 void display(void)
 {
-	updateSilke();
+	silkFire->updateSilke();
 	drawScene();
-	drawSilk();
 	drawWater();
+	silkFire->draw(cameraViewMatrix, cameraProjectionMatrix, currentTime);
 	cloud->draw(cameraViewMatrix, cameraProjectionMatrix);
 	smokeEmitter->draw(cameraViewMatrix, cameraProjectionMatrix, make_identity<float4x4>());
 	glutSwapBuffers();
@@ -574,10 +426,10 @@ void handleKeys(unsigned char key, int /*x*/, int /*y*/)
 		camera_position[1]-=1;
 		break;
 	case 111: //o
-		updateSilke();
+		silkFire->updateSilke();
 		break;
 	case 108: //l
-		makeRandomForce(10.0f);
+		silkFire->makeRandomForce(10.0f);
 		break;
 	}
 }

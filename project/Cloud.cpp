@@ -314,8 +314,6 @@ void Cloud::increaseCloudSpeed() {
 	cloudSpeed++;
 }
 
-//FILE IO
-
 void Cloud::writeToFile() {
 	printf("writing ");
 	ofstream file ("data.bin", ios::binary);
