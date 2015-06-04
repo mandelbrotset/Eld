@@ -27,7 +27,7 @@ SmokeEmitter::SmokeEmitter(int NUM_OF_PARTICLES, float radius, float hight, floa
 		
 		glDisable(GL_CULL_FACE);
 		glDepthMask(GL_FALSE);
-		
+		glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
 		glUseProgram(smokeShaderProgram);
 
 		setUniformSlow(smokeShaderProgram, "viewMatrix", cameraViewMatrix);

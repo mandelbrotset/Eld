@@ -86,27 +86,29 @@ int silkheight = 5;
 
 /******************************* THE CLOUD **************************************/
 const int cpsize = 7;
+const int octaves = 3;
 const float cradius = 150.0f;
 const float cradstep = 0.01f;
-const float cscale = float(cpsize - 2) / (cradius * 2);
+const float cscale = float(cpsize - 1) / (cradius * 2);
+const float maxFrequency = pow(2, octaves - 1);
 const int cisize = (M_PI + cradstep) / cradstep;
 const int csize = cisize * cisize;
+bool cloudUp = true; //move noise up or down
+int nrOfCloudCalcs = 10;
+int currentCloud = 0;
+const float offsetRadius = 30.0f;
+int moveCloud = 0;
+int cloudSpeed = 10;
 
 GLuint cindexBuffer;
 GLuint cloudPositionBuffer;
 GLuint cloudTransaBuffer;
 GLuint cloudVertexArrayObject;
 GLuint cloudShaderProgram;
-int *cloudIndices = new int[cisize * cisize * 3 * 2];
+int *cloudIndices;
 float* cloudPositions;
-float* cloudTransas;
-int cloudIndicesTest[] = {0, 1, 2, 0, 2, 3};
-float cloudPositionsTest[] = {
-	0.0f, 0.0f, 0.0f,
-	0.0f, 0.0f, 3.0f,
-	3.0f, 0.0f, 3.0f,
-	3.0f, 0.0f, 0.0f
-};
+float** cloudTransas;
+Perlin* perlin;
 
 /**WATER**/
 
@@ -139,10 +141,11 @@ float g = 0.3f;
 float b = 0.6f;
 
 float cToPerlin(float f) {
-	return (f + cradius) * cscale;
+	return (f + cradius * maxFrequency) * cscale;
 }
 
 void initCloudIndices() {
+	cloudIndices = new int[cisize * cisize * 3 * 2];
 	int x, z, index;
 	index = 0;
 	for (z = 0; z < cisize - 1; z++) {
@@ -161,6 +164,9 @@ void initCloudIndices() {
 			index++;
 		}
 	}
+	glGenBuffers(1, &cindexBuffer);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, cindexBuffer);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(cloudIndices) * (cisize-1)*(cisize-1)*2*3, cloudIndices, GL_STATIC_DRAW );
 }
 
 void printPosition(int index) {
@@ -179,19 +185,12 @@ void printIndices() {
 	}
 }
 
-void initCloud() {
-	printf("csize: %i\n", csize);
-	Perlin* perlin = new Perlin();
-	perlin->createGrid3D(cpsize, cpsize, cpsize);
-
+void initCloudPositions() {
 	cloudPositions = new float[csize*3];
-	cloudTransas = new float[csize];
-	initCloudIndices();
 	int pindex = 0;
-	int tindex = 0;
 	int xindex = 0;
 	int zindex = 0;
-	float x, z, transa, xx, zz, yy;
+	float x, z, xx, zz, yy;
 	x = 0;
 	z = 0;
 	for (zindex = 0; zindex < cisize; zindex++) {
@@ -200,32 +199,133 @@ void initCloud() {
 			xx = cradius * sin(x) * cos(z);
 			yy = cradius * sin(x) * sin(z);
 			zz = cradius * cos(x);
-			transa = perlin->getValue(cToPerlin(xx), cToPerlin(yy), cToPerlin(zz));
 			cloudPositions[pindex] = xx;
 			pindex++;
 			cloudPositions[pindex] = yy;
 			pindex++;
 			cloudPositions[pindex] = zz;
 			pindex++;
-			cloudTransas[tindex] = transa / 1.0f;
-			tindex++;
 			x += cradstep;
 		}
 		z += cradstep;
 	}
-
 	glGenBuffers(1, &cloudPositionBuffer);
 	glBindBuffer(GL_ARRAY_BUFFER, cloudPositionBuffer);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(float) * csize * 3, cloudPositions, GL_STATIC_DRAW );
+}
 
-	glGenBuffers(1, &cloudTransaBuffer);
+float getPerlinValue(float x, float y, float z) {
+	float frequency = 1.0f;
+	float amplitude = 1.0f;
+	float transa = 0.0f;
+	for (int i = 0; i < octaves; i++) {
+		transa += perlin->getValue(cToPerlin(x * frequency), cToPerlin(y * frequency), cToPerlin(z * frequency)) * amplitude;
+		if (i + 1 < octaves) {
+			frequency *= 2.0f;
+			amplitude /= 2.0f;
+		}
+	}
+	return transa;
+}
+
+void normalizeTransas(float min, float max) {
+	int tindex;
+	int xindex;
+	int zindex;
+	float transa;
+	float size = max - min;
+	for (int i = 0; i < nrOfCloudCalcs; i++) {
+		tindex = 0;
+		xindex = 0;
+		zindex = 0;
+		for (zindex = 0; zindex < cisize; zindex++) {
+			for (xindex = 0; xindex < cisize; xindex++) {	
+				transa = cloudTransas[i][tindex];
+				cloudTransas[i][tindex] = (transa - min) / size;
+				tindex++;
+			}
+		}
+	}
+}
+
+void computeTransas() {
+	int tindex;
+	int xindex;
+	int zindex;
+	float x, z, transa, xx, zz, yy;
+	float min = 10000.0f;
+	float max = -10000.0f;
+	float radOffset = 0.0f;
+	float xOffset = 0.0f;
+	float zOffset = 0.0f;
+	x = 0;
+	z = 0;
+	for (int i = 0; i < nrOfCloudCalcs; i++) {
+		printf("Computing transa %i", i);
+		tindex = 0;
+		zindex = 0;
+		xindex = 0;
+		z = 0;
+		zOffset = offsetRadius * sin(radOffset);
+		xOffset = offsetRadius * cos(radOffset);
+
+		cloudTransas[i] = new float[csize];
+		for (zindex = 0; zindex < cisize; zindex++) {
+			x = 0;
+			for (xindex = 0; xindex < cisize; xindex++) {	
+				xx = offsetRadius + cradius * sin(x) * cos(z) + xOffset;
+				yy = cradius * sin(x) * sin(z);
+				zz = offsetRadius + cradius * cos(x) + zOffset;
+				transa = getPerlinValue(xx, yy, zz);
+				cloudTransas[i][tindex] = transa;
+				tindex++;
+				x += cradstep;
+				if (transa < min) min = transa;
+				if (transa > max) max = transa;
+			}
+			z += cradstep;
+		}
+		radOffset += 2 * M_PI / float(nrOfCloudCalcs);
+		printf(" done\n");
+	}
+	normalizeTransas(min, max);
+	for (int i = 0; i < nrOfCloudCalcs; i++) {
+		printf("transa %i: %f\n", i, cloudTransas[i][1000]);
+	}
+}
+
+void updateTransas() {
+	moveCloud++;
+	if (moveCloud > cloudSpeed) {
+		moveCloud = 0;
+
+		currentCloud += 1;
+		if (currentCloud >= nrOfCloudCalcs) {
+			currentCloud = 0;
+		}
+	}
+	
 	glBindBuffer(GL_ARRAY_BUFFER, cloudTransaBuffer);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(float) * csize, cloudTransas, GL_STATIC_DRAW );
+	glBufferData(GL_ARRAY_BUFFER, sizeof(float) * csize, cloudTransas[currentCloud], GL_STATIC_DRAW );
+}
 
-	glGenBuffers(1, &cindexBuffer);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, cindexBuffer);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(cloudIndices) * (cisize-1)*(cisize-1)*2*3, cloudIndices, GL_STATIC_DRAW );
+void initTransas() {
+	glGenBuffers(1, &cloudTransaBuffer);
+	cloudTransas = new float*[nrOfCloudCalcs];
+	int start = glutGet(GLUT_ELAPSED_TIME);
+	computeTransas();
+	updateTransas();
+	int end = glutGet(GLUT_ELAPSED_TIME);
+	printf("time: %i\n", end - start);
+}
 
+void initPerlin() {
+	printf("csize: %i\n", csize);
+	perlin = new Perlin();
+	perlin->createGrid3D(cpsize * maxFrequency + 2 * (int)offsetRadius + 2, cpsize * maxFrequency * 2, cpsize * maxFrequency + 2 * (int)offsetRadius + 2);
+}
+
+void fixCloudVertexAttribThings() {
 	glGenVertexArrays(1, &cloudVertexArrayObject);
 	glBindVertexArray(cloudVertexArrayObject);
 
@@ -239,7 +339,9 @@ void initCloud() {
 
 	glEnableVertexAttribArray(0);
 	glEnableVertexAttribArray(1);
-	
+}
+
+void setupCloudShader() {
 	cloudShaderProgram = loadShaderProgram("CloudPoint.vert", "CloudPoint.frag"); 
 	glBindAttribLocation(cloudShaderProgram, 0, "position");
 	glBindAttribLocation(cloudShaderProgram, 1, "trans");
@@ -250,7 +352,17 @@ void initCloud() {
 	glUseProgram(cloudShaderProgram);
 }
 
+void initCloud() {
+	initPerlin();
+	initCloudIndices();
+	initCloudPositions();
+	initTransas();
+	fixCloudVertexAttribThings();
+	setupCloudShader();
+}
+
 void drawCloud() {
+	updateTransas();
 	int w = glutGet((GLenum)GLUT_WINDOW_WIDTH);
 	int h = glutGet((GLenum)GLUT_WINDOW_HEIGHT);
 	glViewport(0, 0, w, h);
@@ -432,7 +544,7 @@ void initGL()
 	initSilk();
 	initWater();
 	float3 smokePosition = {0.9f, 0.3f, -2.51f};
-	smokeEmitter = new SmokeEmitter(5000, 0.1f, 2.0f, smokePosition);
+	smokeEmitter = new SmokeEmitter(100000, 0.001f, 2.0f, smokePosition);
 
 	shaderProgram = loadShaderProgram("simple.vert", "simple.frag");
 	glBindAttribLocation(shaderProgram, 0, "position"); 	
@@ -626,7 +738,6 @@ void drawSilk() {
 		positions[s] = silken[s]->getPositions();
 		glBindBuffer( GL_ARRAY_BUFFER, ppositionBuffer[s]);
 		glBufferData( GL_ARRAY_BUFFER, sizeof(positions[s]) * silkwidth * silkheight * 3, positions[s], GL_STATIC_DRAW );
-		glBindBuffer( GL_ARRAY_BUFFER, ppositionBuffer[s] );
 		glBindVertexArray(pvertexArrayObject[s]);
 		
 		glVertexAttribPointer(0, 3, GL_FLOAT, false/*normalized*/, 0/*stride*/, 0/*offset*/ );
@@ -680,6 +791,15 @@ void display(void)
 
 void handleKeyUp(unsigned char key, int x, int y) {
 	key_down[key] = false;
+
+	switch (key) {
+	case 101: //e
+		cloudSpeed++;
+		break;
+	case 113: //q
+		if (cloudSpeed > 1) cloudSpeed--;
+		break;
+	}
 }
 
 void handleKeys(unsigned char key, int /*x*/, int /*y*/)

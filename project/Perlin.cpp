@@ -19,7 +19,7 @@ void Perlin::createGrid3D(int width, int height, int depth) {
 		for (int y = 0; y < height; y++) {
 			grid[x][y] = new float3[depth];
 			for (int z = 0; z < depth; z++) {
-				gx = -1.0f + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(2.0f)));
+				gx = -1.0f + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(2.0f)));// TODO: use pseudo-random with a lookup-table instead!!!
 				gy = -1.0f + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(2.0f)));
 				gz = -1.0f + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(2.0f)));
 				grid[x][y][z] = make_vector(gx, gy, gz);
@@ -85,7 +85,7 @@ float Perlin::getValue(float x, float y, float z) {
 	float iz0 = interpolation(iy0z0, iy1z0, wy);
 	float iz1 = interpolation(iy0z1, iy1z1, wy);
 	float result = interpolation (iz0, iz1, wz);
-
+	//return result;
 	return molnerize(result);
 }
 
@@ -115,6 +115,7 @@ float Perlin::dotProduct(float3 v1, float3 v2) {
 
 float Perlin::molnerize(float value) {
 	value = (value + 1.0f) / 2.0f;
-	float factor = 0.5f * (1.0f+sin(M_PI*value + M_PI * 3.0f/2.0f));
-	return value * factor;
+	return value;
+	//float factor = 0.5f * (1.0f+sin(M_PI*value + M_PI * 3.0f/2.0f));
+	//return value * factor;
 }

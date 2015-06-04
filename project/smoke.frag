@@ -8,8 +8,8 @@ uniform sampler2D texture;
 
 void main() {
      float alphaFactor;
-     if(vAge <= 0.5) {
-         alphaFactor = 0.1 * vAge;
+     if(vAge <= 0.03) {
+         alphaFactor = 0.03 * vAge;
      } else {
          alphaFactor = 0.03;
      }

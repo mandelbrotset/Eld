@@ -11,6 +11,7 @@ public:
 	void createGrid3D(int width, int height, int depth);
 private:
 	float3 ***grid;
+	void createOctave(int width, int height, int depth);
 	float dotProduct(float3 v1, float3 v2);
 	float interpolate(float a0, float a1, float w);
 	float linear(float a0, float a1, float w);
