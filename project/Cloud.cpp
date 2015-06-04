@@ -11,6 +11,7 @@
 #include <GL/freeglut.h>
 #include <IL/il.h>
 #include <IL/ilut.h>
+#include <fstream>
 
 using namespace chag;
 using namespace std;
@@ -23,8 +24,8 @@ float cscale;
 const float maxFrequency = pow(2, octaves - 1);
 const int cisize = (M_PI + cradstep) / cradstep;
 const int csize = cisize * cisize;
-const int nrOfCloudCalcs = 10;
-const float offsetRadius = 30.0f;
+const int nrOfCloudCalcs = 100;
+const float offsetRadius = 5.0f;
 int currentCloud = 0;
 int moveCloud = 0;
 int cloudSpeed = 10;
@@ -38,6 +39,8 @@ int *cloudIndices;
 float* cloudPositions;
 float** cloudTransas;
 Perlin* perlin;
+
+bool computeTrans = false;
 
 Cloud::Cloud(float hemisphereRadius) {
 	hemisphereRad = hemisphereRadius;
@@ -217,12 +220,24 @@ void Cloud::updateTransas() {
 	glBufferData(GL_ARRAY_BUFFER, sizeof(float) * csize, cloudTransas[currentCloud], GL_STATIC_DRAW );
 }
 
+bool Cloud::fileExist(const char *fileName)
+{
+    std::ifstream infile(fileName);
+    return infile.good();
+}
+
 void Cloud::initTransas() {
 	glGenBuffers(1, &cloudTransaBuffer);
 	cloudTransas = new float*[nrOfCloudCalcs];
 	int start = glutGet(GLUT_ELAPSED_TIME);
-	computeTransas();
-	updateTransas();
+	if (fileExist("data.bin")) {
+		printf("Data file found!\n");
+		readFromFile();
+	} else {
+		printf("No data file found. Computing..\n");
+		computeTransas();
+		writeToFile();
+	}
 	int end = glutGet(GLUT_ELAPSED_TIME);
 	printf("time: %i\n", end - start);
 }
@@ -297,4 +312,29 @@ void Cloud::decreaseCloudSpeed() {
 
 void Cloud::increaseCloudSpeed() {
 	cloudSpeed++;
+}
+
+//FILE IO
+
+void Cloud::writeToFile() {
+	printf("writing ");
+	ofstream file ("data.bin", ios::binary);
+	for (int i = 0; i < nrOfCloudCalcs; i++) {
+		file.write((char*)cloudTransas[i], sizeof (float) * csize);
+		printf(".");
+	}
+	file.close();
+	printf(" done\n");
+}
+
+void Cloud::readFromFile() {
+	printf("reading ");	
+	ifstream file ("data.bin", ios::binary);
+	for (int i = 0; i < nrOfCloudCalcs; i++) {
+		cloudTransas[i] = new float[csize];
+		file.read((char*)cloudTransas[i], sizeof(float) * csize);
+		printf(".");
+	}
+	file.close();
+	printf(" done\n");
 }

@@ -30,4 +30,7 @@ private:
 	void Cloud::initPerlin();
 	void Cloud::fixCloudVertexAttribThings();
 	void Cloud::setupCloudShader();
+	void writeToFile();
+	void readFromFile();
+	bool fileExist(const char *fileName);
 };
