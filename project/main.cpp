@@ -25,18 +25,14 @@
 #include <math.h>
 #include "Cloud.h"
 #include "SilkFire.h"
+#include "Scene.h"
+#include "Global.h"
 
 using namespace std;
 using namespace chag;
 
 float currentTime = 0.0f;
 float lastTime = 0.0f;
-GLuint shaderProgram;
-GLuint shadowProgram;
-const float3 up = {0.0f, 1.0f, 0.0f};
-
-OBJModel *theIsland;
-OBJModel *treeStam; 
 
 float3 c_position = {0.0f, 0.0f, 0.0f};
 float yaw = 50.0f;
@@ -46,7 +42,6 @@ float3 c_target = {0.0f, 0.0f, 1.0f};
 
 float3 camera_lookat = make_vector(0.0f, 0.0f, 0.0f);
 float3 camera_position = make_vector(0.0f, 0.0f, 0.0f);
-float3 lightPosition = {0.6f, 0.6f, -2.4f};
 
 bool leftDown = false;
 bool middleDown = false;
@@ -55,22 +50,9 @@ bool key_down[256];
 int prev_x = 0;
 int prev_y = 0;
 
-float4x4 theIslandModelMatrix;
-float4x4 treeStamModelMatrix;
-
-GLuint shadowMapTexture;
-GLuint shadowMapFBO;
-const int shadowMapResolution = 1024*4;
-
-float4x4 cameraViewMatrix;
-float4x4 cameraProjectionMatrix;
-
-float4x4 lightProjectionMatrix;
-float4x4 lightViewMatrix;
-
-bool nightVisionMode = false;
-
-GLuint positionBuffer, colorBuffer, indexBuffer, vertexArrayObject, textureBuffer, texture;
+/*******************************  SCENE    **************************************/
+Scene* scene;
+/********************************************************************************/
 
 /*******************************  SILKE    **************************************/
 SilkFire* silkFire;
@@ -107,10 +89,7 @@ const float waterTexCoords[] = {
 SmokeEmitter *smokeEmitter;
 /********************************************************************************/
 
-//clear color:
-float r = 0.1f;
-float g = 0.3f;
-float b = 0.6f;
+
 
 void drawWater() {
 	int w = glutGet((GLenum)GLUT_WINDOW_WIDTH);
@@ -122,7 +101,7 @@ void drawWater() {
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	setUniformSlow(silkFire->getShaderProgram(), "viewMatrix", cameraViewMatrix);
-	setUniformSlow(silkFire->getShaderProgram(), "projectionMatrix", cameraProjectionMatrix);
+	setUniformSlow(silkFire->getShaderProgram(), "projectionMatrix", Global::cameraProjectionMatrix);
 	setUniformSlow(silkFire->getShaderProgram(), "modelMatrix", make_identity<float4x4>());
 	setUniformSlow(silkFire->getShaderProgram(), "alphaFactor", 1.0f);
 	glEnable(GL_NORMALIZE);
@@ -173,54 +152,9 @@ float3 sphericalTotreeStamtesian(float theta, float phi, float r) {
 						r * cosf(theta)*sinf(phi) );
 }
 
-void initScene() {
-	shaderProgram = loadShaderProgram("simple.vert", "simple.frag");
-	glBindAttribLocation(shaderProgram, 0, "position"); 	
-	glBindAttribLocation(shaderProgram, 2, "texCoordIn");
-	glBindAttribLocation(shaderProgram, 1, "normalIn");
-	glBindFragDataLocation(shaderProgram, 0, "fragmentColor");
-	linkShaderProgram(shaderProgram);
-
-	shadowProgram = loadShaderProgram("shadow.vert", "shadow.frag");
-	glBindAttribLocation(shadowProgram, 0, "position");
-	glBindFragDataLocation(shadowProgram, 0, "fragmentColor");	
-	linkShaderProgram(shadowProgram);
-
-	theIsland = new OBJModel(); 
-	theIsland->load("../scenes/forest.obj");
-
-	treeStam = new OBJModel(); 
-	treeStam->load("../scenes/treestam.obj");
-
-	theIslandModelMatrix = make_scale<float4x4>(make_vector(1.0f, 1.0f, 1.0f));
-	treeStamModelMatrix = make_translation(make_vector(0.0f, 1.0f, 0.0f));
-
-	glGenTextures(1, &shadowMapTexture);
-	glBindTexture(GL_TEXTURE_2D, shadowMapTexture);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32, shadowMapResolution, shadowMapResolution, 0, GL_DEPTH_COMPONENT, GL_FLOAT, 0);
-	
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-	float4 zeros = {1.0f, 1.0f, 1.0f, 1.0f};
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
-	glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, &zeros.x);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
-
-	glBindTexture(GL_TEXTURE_2D, 0);
-	glGenFramebuffers(1, &shadowMapFBO);
-
-	glBindFramebuffer(GL_FRAMEBUFFER, shadowMapFBO);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, shadowMapTexture, 0);
-	glDrawBuffer(GL_NONE);
-	glReadBuffer(GL_NONE);
-}
-
 void initGL()
 {
-	glewInit();  
+	 
 
 	startupGLDiagnostics();
 	setupGLDebugMessages();
@@ -233,108 +167,7 @@ void initGL()
 		glBindFragDataLocation = glBindFragDataLocationEXT;
 	}
 	
-	cloud = new Cloud(cradius);
-	cloud->initCloud();
-
-	silkFire = new SilkFire();
-	silkFire->initSilk();
-
-	initWater();
-
-	float3 smokePosition = {0.9f, 0.3f, -2.51f};
-	smokeEmitter = new SmokeEmitter(100000, 0.001f, 2.0f, smokePosition);
-
-	initScene();
-	
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-}
-
-void calculateSkitenLjus() {
-	int w = glutGet((GLenum)GLUT_WINDOW_WIDTH);
-	int h = glutGet((GLenum)GLUT_WINDOW_HEIGHT);
-	lightViewMatrix = lookAt(lightPosition, make_vector(0.0f, 0.0f, 0.0f), up);
-	lightProjectionMatrix = perspectiveMatrix(90.0f, 1.0, 1.0f, 1000.0f);
-}
-
-void calculateSkitenKamera() {
-	int w = glutGet((GLenum)GLUT_WINDOW_WIDTH);
-	int h = glutGet((GLenum)GLUT_WINDOW_HEIGHT);
-	cameraProjectionMatrix = perspectiveMatrix(45.0f, float(w) / float(h), 0.1f, 1000.0f);
-}
-
-void drawModel(OBJModel *model, const float4x4 &modelMatrix, bool shadow)
-{
-	GLint currentProgram; 
-	glGetIntegerv( GL_CURRENT_PROGRAM, &currentProgram );
-
-	if (shadow) {
-		calculateSkitenLjus();
-		glUseProgram( shadowProgram );
-		setUniformSlow(shadowProgram, "viewMatrix", lightViewMatrix);
-		setUniformSlow(shadowProgram, "projectionMatrix", lightProjectionMatrix);
-		setUniformSlow(shadowProgram, "modelMatrix", modelMatrix); 
-	} else {
-		calculateSkitenKamera();
-		glUseProgram( shaderProgram );
-		setUniformSlow(shaderProgram, "viewMatrix", cameraViewMatrix);
-		setUniformSlow(shaderProgram, "projectionMatrix", cameraProjectionMatrix);
-		setUniformSlow(shaderProgram, "modelMatrix", modelMatrix);
-	}
-	model->render();
-	glUseProgram( currentProgram );
-}
-
-void drawShadowCasters()
-{
-	calculateSkitenKamera();
-	drawModel(theIsland, make_identity<float4x4>(), false);
-	setUniformSlow(shaderProgram, "object_reflectiveness", 0.1f); 
-	drawModel(treeStam, make_translation(make_vector(0.0f, 0.0f, 0.0f)), false); 
-	setUniformSlow(shaderProgram, "object_reflectiveness", 0.0f); 
-}
-
-void drawScene(void)
-{
-	glEnable(GL_DEPTH_TEST);
-	glEnable(GL_CULL_FACE);	
-
-	glClearColor(r,g,b,1.0);
-	glClearDepth(1);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); 
-	int w = glutGet((GLenum)GLUT_WINDOW_WIDTH);
-	int h = glutGet((GLenum)GLUT_WINDOW_HEIGHT);
-	glViewport(0, 0, w, h);								
-	glUseProgram( shaderProgram );	
-	calculateSkitenKamera();
-	calculateSkitenLjus();
-	float4x4 lightMatrix = lightProjectionMatrix * lightViewMatrix * inverse(cameraViewMatrix);
-	setUniformSlow(shaderProgram, "lightMatrix", lightMatrix);
-	
-	setUniformSlow(shaderProgram, "diffuse_texture", 0);
-	setUniformSlow(shaderProgram, "environmentMap", 1);
-	setUniformSlow(shaderProgram, "inverseViewNormalMatrix", transpose(cameraViewMatrix));
-
-	float3 viewSpaceLightPos = transformPoint(cameraViewMatrix, lightPosition); 
-	setUniformSlow(shaderProgram, "viewSpaceLightPosition", viewSpaceLightPos);
-	
-	setUniformSlow(shaderProgram, "shadowMap", 2);
-	glActiveTexture(GL_TEXTURE2);
-	glBindTexture(GL_TEXTURE_2D, shadowMapTexture);
-	
-	setUniformSlow(shaderProgram, "nightVisionMode", (nightVisionMode) ? 1 : 0);
-	setUniformSlow(shaderProgram, "lightDim", silkFire->getAlpha());
-	setUniformSlow(shaderProgram, "lightpos", lightPosition); 
-
-	drawShadowCasters();
-
-	glDepthMask(GL_FALSE);
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	setUniformSlow(shaderProgram, "object_alpha", 1.0f); 
-	glDisable(GL_BLEND);
-	glDepthMask(GL_TRUE); 
-
-	glUseProgram( 0 );	
 }
 
 void updateCamera() {
@@ -368,17 +201,17 @@ void updateCamera() {
 	c_target = c_position + forward;
 	float3 up3 = {0.0f, 0.0f, 1.0f};
 	float3 up = transformPoint(rotation, up3);
-	cameraViewMatrix = lookAt(c_position, c_target, up);
+	Global::cameraViewMatrix = lookAt(c_position, c_target, up);
 }
 
 void display(void)
 {
 	silkFire->updateSilke();
-	drawScene();
+	scene->draw();
 	drawWater();
-	silkFire->draw(cameraViewMatrix, cameraProjectionMatrix, currentTime);
-	cloud->draw(cameraViewMatrix, cameraProjectionMatrix);
-	smokeEmitter->draw(cameraViewMatrix, cameraProjectionMatrix, make_identity<float4x4>());
+	silkFire->draw(currentTime);
+	cloud->draw();
+	smokeEmitter->draw();
 	glutSwapBuffers();
 	CHECK_GL_ERROR();
 }
@@ -408,22 +241,22 @@ void handleKeys(unsigned char key, int /*x*/, int /*y*/)
 		exit(0);
 		break;
 	case 110: //n
-		nightVisionMode = !nightVisionMode;
+		scene->toggleNightVisionMode();
 		break;
 	case 120: //x
-		lightPosition[0]+=1;
+		scene->changeLightPosition(1, 0, 0);
 		break;
 	case 121: //y
-		lightPosition[1]+=1;
+		scene->changeLightPosition(0, 1, 0);
 		break;
 	case 122: //z
-		lightPosition[2]+=2;
+		scene->changeLightPosition(0, 0, 2);
 		break;
 	case 117: //u
-		camera_position[1]+=1;
+		scene->changeLightPosition(0, 1, 0);
 		break;
 	case 105: //i
-		camera_position[1]-=1;
+		scene->changeLightPosition(0, -1, 0);
 		break;
 	case 111: //o
 		silkFire->updateSilke();
@@ -513,6 +346,28 @@ void initgluten() {
 	glutCreateWindow("Silk fire, particle smoke and perlin clouds");
 }
 
+void initObjects() {
+	cloud = new Cloud(cradius);
+	cloud->initCloud();
+
+	silkFire = new SilkFire();
+	silkFire->initSilk();
+
+	initWater();
+
+	float3 smokePosition = {0.9f, 0.3f, -2.51f};
+	smokeEmitter = new SmokeEmitter(100000, 0.001f, 2.0f, smokePosition);
+
+	scene = new Scene(silkFire);
+	scene->initScene();
+}
+
+void init() {
+	srand(time(0));
+	initGL();
+	initObjects();
+}
+
 int main(int argc, char *argv[])
 {
 #	if defined(__linux__)
@@ -528,10 +383,13 @@ int main(int argc, char *argv[])
 	printf( "--\n" );
 	printf( "-- WARNING: your GLUT doesn't support sRGB / GLUT_SRGB\n" );
 #	endif
-	srand (time(0));
+
 	initgluten();
 	setCallbackFunctions();
-	initGL();
+	glewInit(); 
+
+	init();
+
 	glutMainLoop();
 	return 0;          
 }

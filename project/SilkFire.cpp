@@ -13,6 +13,7 @@
 #include <IL/ilut.h>
 #include <fstream>
 #include "Silk.h"
+#include "Global.h"
 
 using namespace chag;
 using namespace std;
@@ -132,7 +133,7 @@ void SilkFire::updateSilke() {
 	}
 }
 
-void SilkFire::draw(float4x4 cameraViewMatrix, float4x4 cameraProjectionMatrix, int currentTime) {
+void SilkFire::draw(int currentTime) {
 	int w = glutGet((GLenum)GLUT_WINDOW_WIDTH);
 	int h = glutGet((GLenum)GLUT_WINDOW_HEIGHT);
 	glViewport(0, 0, w, h);
@@ -144,8 +145,8 @@ void SilkFire::draw(float4x4 cameraViewMatrix, float4x4 cameraProjectionMatrix, 
 
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	setUniformSlow(silkShaderProgram, "viewMatrix", cameraViewMatrix);
-	setUniformSlow(silkShaderProgram, "projectionMatrix", cameraProjectionMatrix);
+	setUniformSlow(silkShaderProgram, "viewMatrix", Global::cameraViewMatrix);
+	setUniformSlow(silkShaderProgram, "projectionMatrix", Global::cameraProjectionMatrix);
 	setUniformSlow(silkShaderProgram, "modelMatrix", make_identity<float4x4>());
 
 	for (int s = 0; s < nrOfSilken; s++) {

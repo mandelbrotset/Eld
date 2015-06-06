@@ -12,6 +12,7 @@
 #include <IL/il.h>
 #include <IL/ilut.h>
 #include <fstream>
+#include "Global.h"
 
 using namespace chag;
 using namespace std;
@@ -284,7 +285,7 @@ void Cloud::initCloud() {
 	setupCloudShader();
 }
 
-void Cloud::draw(float4x4 cameraViewMatrix, float4x4 cameraProjectionMatrix) {
+void Cloud::draw() {
 	updateTransas();
 	int w = glutGet((GLenum)GLUT_WINDOW_WIDTH);
 	int h = glutGet((GLenum)GLUT_WINDOW_HEIGHT);
@@ -292,8 +293,8 @@ void Cloud::draw(float4x4 cameraViewMatrix, float4x4 cameraProjectionMatrix) {
 	glDisable(GL_CULL_FACE);
 	glUseProgram(cloudShaderProgram);
 	float4x4 projectionMatrix = perspectiveMatrix(45.0f, float(w)/float(h), 0.01f, 300.0f); 
-	setUniformSlow(cloudShaderProgram, "viewMatrix", cameraViewMatrix);
-	setUniformSlow(cloudShaderProgram, "projectionMatrix", cameraProjectionMatrix);
+	setUniformSlow(cloudShaderProgram, "viewMatrix", Global::cameraViewMatrix);
+	setUniformSlow(cloudShaderProgram, "projectionMatrix", Global::cameraProjectionMatrix);
 	setUniformSlow(cloudShaderProgram, "modelMatrix", make_identity<float4x4>());
 	glBindVertexArray(cloudVertexArrayObject);
 	glVertexAttribPointer(2, 3, GL_FLOAT, false/*normalized*/, 0/*stride*/, 0/*offset*/ );
