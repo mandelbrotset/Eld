@@ -60,8 +60,8 @@ void Scene::drawModel(OBJModel *model, const float4x4 &modelMatrix, bool shadow)
 	} else {
 		calculateSkitenKamera();
 		glUseProgram( shaderProgram );
-		setUniformSlow(shaderProgram, "viewMatrix", Global::cameraViewMatrix);
-		setUniformSlow(shaderProgram, "projectionMatrix", Global::cameraProjectionMatrix);
+		setUniformSlow(shaderProgram, "viewMatrix", cameraViewMatrix);
+		setUniformSlow(shaderProgram, "projectionMatrix", cameraProjectionMatrix);
 		setUniformSlow(shaderProgram, "modelMatrix", modelMatrix);
 	}
 	model->render();
@@ -82,7 +82,7 @@ void Scene::draw()
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);	
 
-	glClearColor(Global::CLEAR_COLOR_R, Global::CLEAR_COLOR_G, Global::CLEAR_COLOR_B, 1.0);
+	glClearColor(CLEAR_COLOR_R, CLEAR_COLOR_G, CLEAR_COLOR_B, 1.0);
 	glClearDepth(1);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); 
 	int w = glutGet((GLenum)GLUT_WINDOW_WIDTH);
@@ -91,14 +91,14 @@ void Scene::draw()
 	glUseProgram( shaderProgram );	
 	calculateSkitenKamera();
 	calculateSkitenLjus();
-	float4x4 lightMatrix = lightProjectionMatrix * lightViewMatrix * inverse(Global::cameraViewMatrix);
+	float4x4 lightMatrix = lightProjectionMatrix * lightViewMatrix * inverse(cameraViewMatrix);
 	setUniformSlow(shaderProgram, "lightMatrix", lightMatrix);
 	
 	setUniformSlow(shaderProgram, "diffuse_texture", 0);
 	setUniformSlow(shaderProgram, "environmentMap", 1);
-	setUniformSlow(shaderProgram, "inverseViewNormalMatrix", transpose(Global::cameraViewMatrix));
+	setUniformSlow(shaderProgram, "inverseViewNormalMatrix", transpose(cameraViewMatrix));
 
-	float3 viewSpaceLightPos = transformPoint(Global::cameraViewMatrix, lightPosition); 
+	float3 viewSpaceLightPos = transformPoint(cameraViewMatrix, lightPosition); 
 	setUniformSlow(shaderProgram, "viewSpaceLightPosition", viewSpaceLightPos);
 	
 	setUniformSlow(shaderProgram, "shadowMap", 2);
@@ -176,7 +176,7 @@ void Scene::calculateSkitenLjus() {
 void Scene::calculateSkitenKamera() {
 	int w = glutGet((GLenum)GLUT_WINDOW_WIDTH);
 	int h = glutGet((GLenum)GLUT_WINDOW_HEIGHT);
-	Global::cameraProjectionMatrix = perspectiveMatrix(45.0f, float(w) / float(h), 0.1f, 1000.0f);
+	cameraProjectionMatrix = perspectiveMatrix(45.0f, float(w) / float(h), 0.1f, 1000.0f);
 }
 
 void Scene::changeLightPosition(float dx, float dy, float dz) {

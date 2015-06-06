@@ -31,8 +31,8 @@ SmokeEmitter::SmokeEmitter(int NUM_OF_PARTICLES, float radius, float hight, floa
 		glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
 		glUseProgram(smokeShaderProgram);
 
-		setUniformSlow(smokeShaderProgram, "viewMatrix", Global::cameraViewMatrix);
-		setUniformSlow(smokeShaderProgram, "projectionMatrix", Global::cameraProjectionMatrix);
+		setUniformSlow(smokeShaderProgram, "viewMatrix", cameraViewMatrix);
+		setUniformSlow(smokeShaderProgram, "projectionMatrix", cameraProjectionMatrix);
 		setUniformSlow(smokeShaderProgram, "modelMatrix", make_identity<float4x4>());
 		
 		setUniformSlow(smokeShaderProgram, "uTime", time);

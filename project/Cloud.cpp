@@ -293,8 +293,8 @@ void Cloud::draw() {
 	glDisable(GL_CULL_FACE);
 	glUseProgram(cloudShaderProgram);
 	float4x4 projectionMatrix = perspectiveMatrix(45.0f, float(w)/float(h), 0.01f, 300.0f); 
-	setUniformSlow(cloudShaderProgram, "viewMatrix", Global::cameraViewMatrix);
-	setUniformSlow(cloudShaderProgram, "projectionMatrix", Global::cameraProjectionMatrix);
+	setUniformSlow(cloudShaderProgram, "viewMatrix", cameraViewMatrix);
+	setUniformSlow(cloudShaderProgram, "projectionMatrix", cameraProjectionMatrix);
 	setUniformSlow(cloudShaderProgram, "modelMatrix", make_identity<float4x4>());
 	glBindVertexArray(cloudVertexArrayObject);
 	glVertexAttribPointer(2, 3, GL_FLOAT, false/*normalized*/, 0/*stride*/, 0/*offset*/ );

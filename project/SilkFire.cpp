@@ -145,8 +145,8 @@ void SilkFire::draw(int currentTime) {
 
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	setUniformSlow(silkShaderProgram, "viewMatrix", Global::cameraViewMatrix);
-	setUniformSlow(silkShaderProgram, "projectionMatrix", Global::cameraProjectionMatrix);
+	setUniformSlow(silkShaderProgram, "viewMatrix", cameraViewMatrix);
+	setUniformSlow(silkShaderProgram, "projectionMatrix", cameraProjectionMatrix);
 	setUniformSlow(silkShaderProgram, "modelMatrix", make_identity<float4x4>());
 
 	for (int s = 0; s < nrOfSilken; s++) {

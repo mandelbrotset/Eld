@@ -5,9 +5,9 @@
 #include "Silk.h"
 
 namespace {
-	const float CLEAR_COLOR_R;
-	const float CLEAR_COLOR_G;
-	const float CLEAR_COLOR_B;
+	const float CLEAR_COLOR_R = 0.1f;
+	const float CLEAR_COLOR_G = 0.3f;
+	const float CLEAR_COLOR_B = 0.6f;
 
 	float4x4 cameraViewMatrix;
 	float4x4 cameraProjectionMatrix;

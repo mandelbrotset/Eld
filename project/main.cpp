@@ -101,7 +101,7 @@ void drawWater() {
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	setUniformSlow(silkFire->getShaderProgram(), "viewMatrix", cameraViewMatrix);
-	setUniformSlow(silkFire->getShaderProgram(), "projectionMatrix", Global::cameraProjectionMatrix);
+	setUniformSlow(silkFire->getShaderProgram(), "projectionMatrix", cameraProjectionMatrix);
 	setUniformSlow(silkFire->getShaderProgram(), "modelMatrix", make_identity<float4x4>());
 	setUniformSlow(silkFire->getShaderProgram(), "alphaFactor", 1.0f);
 	glEnable(GL_NORMALIZE);
@@ -201,7 +201,7 @@ void updateCamera() {
 	c_target = c_position + forward;
 	float3 up3 = {0.0f, 0.0f, 1.0f};
 	float3 up = transformPoint(rotation, up3);
-	Global::cameraViewMatrix = lookAt(c_position, c_target, up);
+	cameraViewMatrix = lookAt(c_position, c_target, up);
 }
 
 void display(void)

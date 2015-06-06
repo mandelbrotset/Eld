@@ -134,10 +134,14 @@
     </Bscmake>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Cloud.cpp" />
+    <ClCompile Include="Global.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Node.cpp" />
     <ClCompile Include="Perlin.cpp" />
+    <ClCompile Include="Scene.cpp" />
     <ClCompile Include="Silk.cpp" />
+    <ClCompile Include="SilkFire.cpp" />
     <ClCompile Include="SmokeEmitter.cpp" />
     <ClCompile Include="SmokeParticle.cpp" />
   </ItemGroup>
@@ -154,9 +158,13 @@
     <None Include="smoke.vert" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Cloud.h" />
+    <ClInclude Include="Global.h" />
     <ClInclude Include="Node.h" />
     <ClInclude Include="Perlin.h" />
+    <ClInclude Include="Scene.h" />
     <ClInclude Include="Silk.h" />
+    <ClInclude Include="SilkFire.h" />
     <ClInclude Include="SmokeEmitter.h" />
     <ClInclude Include="SmokeParticle.h" />
   </ItemGroup>
