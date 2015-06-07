@@ -11,7 +11,7 @@ class SilkFire
 public:
 	SilkFire();
 	~SilkFire(void);
-	void draw(float4x4 cameraViewMatrix, float4x4 cameraProjectionMatrix, int currentTime);
+	void draw(int currentTime);
 	void updateSilke();
 	float getAlpha();
 	void makeRandomForce(float magnitude);

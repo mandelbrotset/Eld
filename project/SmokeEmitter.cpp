@@ -1,5 +1,6 @@
 
 #include "SmokeEmitter.h"
+#include "Global.h"
 
 SmokeEmitter::SmokeEmitter(int NUM_OF_PARTICLES, float radius, float hight, float3 position) : NUM_OF_PARTICLES(NUM_OF_PARTICLES), SMOKE_RADIUS(radius), SMOKE_HIGHT(hight), EMITTER_START_POSITION(position), BYTES_PER_FLOAT(4) {
 		smokeParticles = new SmokeParticle*[NUM_OF_PARTICLES];
@@ -19,7 +20,7 @@ SmokeEmitter::SmokeEmitter(int NUM_OF_PARTICLES, float radius, float hight, floa
 			delete smokeParticles[i];
 	}
 	
-	void SmokeEmitter::draw(float4x4 cameraViewMatrix, float4x4 cameraProjectionMatrix, float4x4 modelMatrix){
+	void SmokeEmitter::draw(){
 		
 		int w = glutGet((GLenum)GLUT_WINDOW_WIDTH);
 		int h = glutGet((GLenum)GLUT_WINDOW_HEIGHT);
@@ -32,7 +33,7 @@ SmokeEmitter::SmokeEmitter(int NUM_OF_PARTICLES, float radius, float hight, floa
 
 		setUniformSlow(smokeShaderProgram, "viewMatrix", cameraViewMatrix);
 		setUniformSlow(smokeShaderProgram, "projectionMatrix", cameraProjectionMatrix);
-		setUniformSlow(smokeShaderProgram, "modelMatrix", modelMatrix);
+		setUniformSlow(smokeShaderProgram, "modelMatrix", make_identity<float4x4>());
 		
 		setUniformSlow(smokeShaderProgram, "uTime", time);
 

@@ -51,6 +51,6 @@ class SmokeEmitter {
 	SmokeEmitter(int NUM_OF_PARTICLES, float radius, float hight, float3 position);
 	~SmokeEmitter();
 	
-	void draw(float4x4 cameraViewMatrix, float4x4 cameraProjectionMatrix, float4x4 modelMatrix);
+	void draw();
 	
 };
