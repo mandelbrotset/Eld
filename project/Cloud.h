@@ -14,7 +14,7 @@ public:
 	void decreaseCloudSpeed();
 	void increaseCloudSpeed();
 	int getCloudSpeed();
-	void draw();
+	void draw(float4x4 cameraViewMatrix, float4x4 cameraProjectionMatrix);
 private:
 	float Cloud::cToPerlin(float f);
 	void Cloud::initCloudIndices();

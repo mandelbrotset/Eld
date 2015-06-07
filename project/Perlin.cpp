@@ -11,6 +11,7 @@ using namespace std;
 float3 *grid;
 
 void Perlin::createGrid3D(int width, int height, int depth) {
+	srand (time(0));
 	float gx, gy, gz;
 	grid = new float3**[width];
 	for (int x = 0; x < width; x++) {

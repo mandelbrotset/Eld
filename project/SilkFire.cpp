@@ -13,7 +13,6 @@
 #include <IL/ilut.h>
 #include <fstream>
 #include "Silk.h"
-#include "Global.h"
 
 using namespace chag;
 using namespace std;
@@ -133,7 +132,7 @@ void SilkFire::updateSilke() {
 	}
 }
 
-void SilkFire::draw(int currentTime) {
+void SilkFire::draw(float4x4 cameraViewMatrix, float4x4 cameraProjectionMatrix, int currentTime) {
 	int w = glutGet((GLenum)GLUT_WINDOW_WIDTH);
 	int h = glutGet((GLenum)GLUT_WINDOW_HEIGHT);
 	glViewport(0, 0, w, h);

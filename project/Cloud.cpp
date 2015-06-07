@@ -12,7 +12,6 @@
 #include <IL/il.h>
 #include <IL/ilut.h>
 #include <fstream>
-#include "Global.h"
 
 using namespace chag;
 using namespace std;
@@ -285,7 +284,7 @@ void Cloud::initCloud() {
 	setupCloudShader();
 }
 
-void Cloud::draw() {
+void Cloud::draw(float4x4 cameraViewMatrix, float4x4 cameraProjectionMatrix) {
 	updateTransas();
 	int w = glutGet((GLenum)GLUT_WINDOW_WIDTH);
 	int h = glutGet((GLenum)GLUT_WINDOW_HEIGHT);
